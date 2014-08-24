@@ -1,0 +1,110 @@
+---
+title: "The Effect of Vitamin C on Tooth Growth in Guinea Pigs"
+author: "Ivan Filho"
+geometry: margin=0.60in
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 4
+    highlight: default
+  html_document:
+    fig_height: 5
+    fig_width: 5
+    highlight: default
+fontsize: 8pt
+---
+
+Introduction
+------------
+
+I have created a GitHub repository where I've put the files related to this homework. It can be accessed via the following url: https://github.com/ivanmantova/coursera-statsinference.
+
+Exploratory Analysis
+--------------------
+
+Let's load the **ToothGrowth** data and see some summary information from the data set.
+
+```{r, echo=FALSE}
+library(datasets)
+library(ggplot2)
+```
+
+The data set consists of measurements of length of guinea pigs teeth. It also states that there are two delivery methods of Vitamin C, orange juice (OJ) and ascorbic acid (VC). They were administered with three dose levels of 0.5, 1, and 2 mg.
+
+Let's explore the data.
+
+```{r, echo=FALSE}
+data(ToothGrowth)
+with(ToothGrowth, table(supp, dose))
+```
+As the table above shows, there are just 10 observations for each group of delivery method (`supp`) and dose.
+
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+# This plot was created based on the example shown in the following website:
+# http://is-r.tumblr.com/post/35769073499/textual-healing-part-ii
+
+ggplot(ToothGrowth, aes(x = supp, y = len , fill = supp)) +
+  geom_boxplot(alpha = 0.6, outlier.colour = c("grey40") , outlier.size = 2.5) +
+  scale_fill_manual(values=c("cadetblue", "salmon", "orangered3")) +
+  facet_wrap(~dose) + theme_bw() +
+  labs(title="Tooth Growth by Supplement and Dose\n",
+       x="\nDose (mg)",
+       y="\nLength (mm)\n") +
+  guides(fill = guide_legend("\nSupplement")) +
+  geom_hline(y=0, lty=2)
+```
+
+The plot shows that for doses of .5 and 1.0 mg, there seems to be a relatively large difference between the treatments. For doses of 2.0 mg, however, there doesn't seem to be much difference between the treatments. We are going to perform some analysis, do some hypothesis testing and calculate confidence intervals in order to quantify this uncertainty.
+
+Confidence Intervals
+--------------------
+
+```{r, echo=FALSE}
+x1 <- ToothGrowth$len[ToothGrowth$supp == "OJ"]
+x2 <- ToothGrowth$len[ToothGrowth$supp == "VC"]
+
+n1 <- length(x1)
+n2 <- length(x2)
+```
+
+We are going to produce $t$ confidence intervals for tooth growth using the techniques presented in the class.
+
+Given the small sample size, we could try to use Student's t-distribution for modeling the data, but **we can't assume equal variance for both groups**. We can, however, use an approximation of the t-distribution using the formula for Degrees of Freedom as shown in the lectures.
+
+```{r, echo=FALSE}
+#mean(x1) + c(-1, 1) * qnorm(.975) * sd(x1)/sqrt(n1)
+#mean(x1) + c(-1, 1) * qt(.975, n1-1) * sd(x1)/sqrt(n1)
+
+tg1 <- ToothGrowth[ToothGrowth$dose == .5,]
+tg2 <- ToothGrowth[ToothGrowth$dose == 1,]
+tg3 <- ToothGrowth[ToothGrowth$dose == 2,]
+```
+
+Here we compare the difference of the empirical mean between the two supplements for the various doses:
+
+- t test between OJ and VC supplements for .5 mg:
+```{r, echo=FALSE}
+t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = tg1);
+```
+
+- t test between OJ and VC supplements for 1 mg:
+```{r, echo=FALSE}
+t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = tg2);
+```
+
+- t test between OJ and VC supplements for 2 mg:
+```{r, echo=FALSE}
+t.test(len ~ supp, paired = FALSE, var.equal = FALSE, data = tg3);
+```
+
+Hypothesis testing
+------------------
+
+For the first two doses, .5 and 1, the 95% Confidence Intervals we calculated do not include zero. We have enough evidence to reject the null hypothesis that the true difference between the two means is zero with *p-values* of `0.0064` and `0.0010`, respectively.
+
+In the last t-test, for the 2 mg dose, however, we do not have enough evidence to reject the null hypothesis, as the 95% Confidence Interval does contain zero.
+
+Conclusion
+----------
+
+If we are willing to assume that these are random samples from a relavant population of Guinea Pigs receiving treatment, we can say that for small doses ($< 2 mg$), the most effective treatment is with Orange Juice (OJ). For the 2 mg treatment we don't have enough data to make that conclusion and failed to reject the null hypothesis that there is no difference between the supplements.

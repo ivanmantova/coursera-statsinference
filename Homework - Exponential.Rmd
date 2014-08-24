@@ -1,0 +1,134 @@
+---
+title: "Simulation Exercise - Exponential Distribution"
+author: "Ivan Filho"
+geometry: margin=0.60in
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 4
+    highlight: default
+  html_document:
+    fig_height: 5
+    fig_width: 5
+    highlight: default
+fontsize: 8pt
+---
+
+Introduction
+------------
+
+I have created a GitHub repository where I've put the files related to this homework. It can be accessed via the following url: https://github.com/ivanmantova/coursera-statsinference.
+
+Analysis
+-------
+
+We are going to simulate 40 iid random variables drawn from an Exponential distribution with parameter $\lambda = .2$ and analyse the sampling distribution of their averages.
+
+```{r, echo=FALSE}
+n <- 40
+nsim <- 2000
+lambda <- .2
+exp_matrix <- matrix(data = rexp(n * nsim, lambda), nsim)
+
+exp_means <- apply(X = exp_matrix, 1, mean)
+#exp_sds <- apply(X = exp_matrix, 1, sd)
+exp_vars <- apply(X = exp_matrix, 1, var)
+
+hist(exp_means)
+```
+
+We have taken 2000 means from 40 iid draws from the distribution and plotted a histogram. According to the **Central Limit Theorem**, we know that the distribution of sample averages should look like a Gaussian (normal) distribution as the sample size increases. Also, according to the **Law of Large Numbers** the sample mean of iid samples is consistent for the population mean, as well as the sample variance and sample standard deviation.
+
+Here we have a sample size of 40, which should be enough for our purposes.
+
+We can see from the plot that the distribution does look aproximately normal. We are now going to perform some basic inference on these simulated samples.
+
+Estimating the true (population) mean $\mu$ with $\bar X$
+---------------------------------------------------
+
+The mean of the Exponential distribution is $E[X] = \frac{1}{\lambda} = \lambda^{-1}$, so the mean of the population distribution with rate parameter $\lambda$ = 0.2 is equal to 5 ($.2^{-1} = 5$).
+
+Our estimate of the true mean of the distribution is the empirical mean $\bar X$, which is equal to:
+
+```{r, echo=FALSE}
+mean(exp_means)
+```
+
+Variance and standard deviation
+-------------------------------
+
+The variance of an exponentially distributed random variable $X$ is given by $$Var[X] = \frac{1}{\lambda^2} = \lambda^{-2}$$
+which we can calculate since we are doing simulations and we know the true parameter $\lambda$. So in our case $\lambda^{-2} = .2^{-2} = 25$.
+
+The standard deviation is given by the square root of the variance $\sqrt{\lambda^{-2}} = \sqrt{25} = 5$.
+
+Standard error of the mean
+--------------------------
+
+We can also calculate the standard error of the sampling distribution of the mean by
+$$\frac{\sqrt{\lambda^{-2}}}{\sqrt{n}} = \frac{\sqrt{25}}{\sqrt{40}} = .7905694$$
+
+which we can estimate with the standard deviation of our sample means $$SD_{\bar x} = \frac{\sigma}{\sqrt{n}}$$
+
+```{r, echo=FALSE}
+sd(exp_means)
+```
+
+Confidence Interval for the mean
+--------------------------------
+
+Given that we know the properties stated at the beginning and now that we have our estimates $\bar X$ and $S$ we can calculate a 95% confidence interval for the mean with the formula $\bar X_n \pm 1.96\sigma / \sqrt{n}$:
+
+```{r, echo=FALSE}
+mean(exp_means) + c(-1,1) * qnorm(.975) * sd(exp_means) / sqrt(n)
+```
+
+Let's evaluate the coverage of the 95% confidence interval for $\frac{1}{\lambda}$ for various $\lambda$ ranging from $.1$ to $.9$. I also want to compare the coverage of the 95% Confidence Interval for Normal Distribution and the coverage of 95% Confidence Interval for t-Distribution:
+
+```{r, echo=FALSE, message=FALSE}
+library(ggplot2)
+library(gridExtra)
+```
+
+```{r, echo=FALSE, fig.width=8}
+lambdas <- seq(0.1, 0.9, by = .05);
+nsim <- 1000
+n <- 40
+
+ncoverage <- sapply(lambdas, function(lambda){
+  m <- matrix(rexp(nsim*n, rate = lambda), nsim)
+  x <- apply(m, 1, mean)
+  ll <- x - qnorm(.975) * x/sqrt(n)
+  ul <- x + qnorm(.975) * x/sqrt(n)
+  mean(ll < 1/lambda & ul > 1/lambda)
+})
+
+tcoverage <- sapply(lambdas, function(lambda){
+  m <- matrix(rexp(nsim*n, rate = lambda), nsim)
+  x <- apply(m, 1, mean)
+  ll <- x - qt(.975, n-1) * x/sqrt(n)
+  ul <- x + qt(.975, n-1) * x/sqrt(n)
+  mean(ll < 1/lambda & ul > 1/lambda)
+})
+
+plot1 <- ggplot(data.frame(lambdas, ncoverage),
+       aes(x = lambdas, y = ncoverage)) +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 0.95) +
+  ylim(0.9, 1.0)
+
+plot2 <- ggplot(data.frame(lambdas, tcoverage),
+       aes(x = lambdas, y = tcoverage)) +
+  geom_line(size = 1) +
+  geom_hline(yintercept = 0.95) +
+  ylim(0.9, 1.0)
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+As we can see, because of the small $n$ (40), the t-distribution confidence interval does a slighly better job at covering the true value of the mean $\mu$.
+
+```{r, echo=FALSE}
+cat(sprintf("Average ncoverage = %f", mean(ncoverage)))
+cat(sprintf("Average tcoverage = %f", mean(tcoverage)))
+```
